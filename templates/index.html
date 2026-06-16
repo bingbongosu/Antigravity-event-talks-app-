@@ -78,9 +78,14 @@
 
             <div class="feed-header">
                 <h2>Recent Notes (<span id="visible-count">{{ data.entries | length }}</span>)</h2>
-                <button id="select-all-btn" class="btn btn-secondary btn-sm">
-                    <i class="fa-regular fa-square-check"></i> Select All
-                </button>
+                <div class="feed-header-actions" style="display: flex; gap: 0.5rem;">
+                    <button id="export-csv-btn" class="btn btn-secondary btn-sm">
+                        <i class="fa-solid fa-file-csv"></i> Export to CSV
+                    </button>
+                    <button id="select-all-btn" class="btn btn-secondary btn-sm">
+                        <i class="fa-regular fa-square-check"></i> Select All
+                    </button>
+                </div>
             </div>
 
             <div class="feed-container" id="feed-container">
@@ -109,6 +114,9 @@
                                 <i class="fa-solid fa-arrow-up-right-from-square"></i> View Docs
                             </a>
                             {% endif %}
+                            <button class="btn btn-tweet-single btn-copy-single" onclick="copySingle('check-{{ entry.id }}')">
+                                <i class="fa-regular fa-copy"></i> Copy
+                            </button>
                             <button class="btn btn-tweet-single" onclick="tweetSingle('{{ entry.title | replace("'", "\\'") }}', '{{ entry.link }}', '{{ entry.tweet_preview | replace("'", "\\'") }}')">
                                 <i class="fa-brands fa-x-twitter"></i> Tweet This
                             </button>

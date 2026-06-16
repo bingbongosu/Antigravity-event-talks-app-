@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const lastUpdatedTime = document.getElementById('last-updated-time');
     const visibleCount = document.getElementById('visible-count');
     const selectAllBtn = document.getElementById('select-all-btn');
+    const exportCsvBtn = document.getElementById('export-csv-btn');
     const floatingBar = document.getElementById('floating-bar');
     const selectedCountSpan = document.getElementById('selected-count');
     const clearSelectionBtn = document.getElementById('clear-selection-btn');
@@ -30,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     filterPills.forEach(pill => pill.addEventListener('click', handleFilter));
     refreshBtn.addEventListener('click', refreshFeed);
     selectAllBtn.addEventListener('click', toggleSelectAll);
+    exportCsvBtn.addEventListener('click', exportToCSV);
     clearSelectionBtn.addEventListener('click', clearSelection);
     tweetSelectedBtn.addEventListener('click', openMultiTweetComposer);
     
@@ -213,6 +215,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="card-actions">
                         ${entry.link ? `<a href="${entry.link}" target="_blank" class="card-link"><i class="fa-solid fa-arrow-up-right-from-square"></i> View Docs</a>` : ''}
+                        <button class="btn btn-tweet-single btn-copy-single" onclick="copySingle('check-${entry.id}')">
+                            <i class="fa-regular fa-copy"></i> Copy
+                        </button>
                         <button class="btn btn-tweet-single" onclick="tweetSingle('${entry.title.replace(/'/g, "\\'")}', '${entry.link}', '${entry.tweet_preview.replace(/'/g, "\\'")}')">
                             <i class="fa-brands fa-x-twitter"></i> Tweet This
                         </button>
@@ -306,5 +311,77 @@ document.addEventListener('DOMContentLoaded', () => {
         const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
         window.open(shareUrl, '_blank', 'width=550,height=420');
         hideModal();
+    }
+
+    // Copy Single Card to Clipboard
+    window.copySingle = function(checkboxId) {
+        const checkbox = document.getElementById(checkboxId);
+        const card = checkbox.closest('.feed-card');
+        const title = card.querySelector('.card-title').textContent.trim();
+        const text = card.querySelector('.card-content').textContent.trim();
+        const date = card.querySelector('.card-date').textContent.trim();
+        const badge = card.querySelector('.badge').textContent.trim();
+
+        const copyText = `BigQuery Update [${date}] [${badge}]:\nTitle: ${title}\nDetails:\n${text}`;
+        
+        navigator.clipboard.writeText(copyText).then(() => {
+            const btn = card.querySelector('.btn-copy-single');
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-check"></i> Copied!`;
+            setTimeout(() => {
+                btn.innerHTML = originalContent;
+            }, 2000);
+        }).catch(err => {
+            console.error('Could not copy text: ', err);
+            alert('Failed to copy text to clipboard.');
+        });
+    }
+
+    // Export Release Notes to CSV
+    function exportToCSV() {
+        const cards = document.querySelectorAll('.feed-card');
+        let dataToExport = [];
+        
+        // Export selected cards if any exist, otherwise export all visible cards
+        const hasSelection = selectedEntries.size > 0;
+        
+        cards.forEach(card => {
+            const isVisible = card.style.display !== 'none';
+            const isSelected = selectedEntries.has(card.dataset.id);
+            
+            if ((hasSelection && isSelected) || (!hasSelection && isVisible)) {
+                const date = card.querySelector('.card-date').textContent.trim();
+                const type = card.dataset.type;
+                const title = card.querySelector('.card-title').textContent.trim();
+                const content = card.querySelector('.card-content').textContent.trim();
+                const linkEl = card.querySelector('.card-link');
+                const link = linkEl ? linkEl.href : '';
+                
+                dataToExport.push({ date, type, title, content, link });
+            }
+        });
+        
+        if (dataToExport.length === 0) {
+            alert('No release notes found to export.');
+            return;
+        }
+        
+        // Build CSV content
+        let csvContent = "Date,Type,Title,Content,Link\n";
+        
+        dataToExport.forEach(row => {
+            const escape = (val) => `"${val.replace(/"/g, '""')}"`;
+            csvContent += `${escape(row.date)},${escape(row.type)},${escape(row.title)},${escape(row.content)},${escape(row.link)}\n`;
+        });
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `bigquery_release_notes_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 });
