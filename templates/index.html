@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BigQuery Release Notes Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="glow-bg"></div>
+    <div class="app-container">
+        <!-- Sidebar / Header -->
+        <header class="dashboard-header">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-database"></i>
+                </div>
+                <div>
+                    <h1>BigQuery</h1>
+                    <p class="subtitle">Release Notes Tracker</p>
+                </div>
+            </div>
+
+            <div class="stats-panel">
+                <div class="stat-item">
+                    <span class="stat-label">Feed Status</span>
+                    <span class="stat-value text-success" id="feed-status">
+                        <i class="fa-solid fa-circle-check"></i> Connected
+                    </span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Last Updated</span>
+                    <span class="stat-value" id="last-updated-time">{{ data.last_fetched }}</span>
+                </div>
+            </div>
+
+            <div class="search-filter-box">
+                <div class="search-input-wrapper">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="search-input" placeholder="Search updates...">
+                </div>
+                
+                <div class="filter-pills">
+                    <button class="filter-pill active" data-type="all">All</button>
+                    <button class="filter-pill" data-type="feature"><span class="dot feat"></span>Features</button>
+                    <button class="filter-pill" data-type="fix"><span class="dot fix"></span>Fixes</button>
+                    <button class="filter-pill" data-type="deprecation"><span class="dot dep"></span>Deprecations</button>
+                    <button class="filter-pill" data-type="update"><span class="dot upd"></span>Updates</button>
+                </div>
+            </div>
+
+            <div class="actions-area">
+                <button id="refresh-btn" class="btn btn-primary">
+                    <i class="fa-solid fa-rotate refresh-spinner"></i>
+                    <span>Refresh Feed</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content (Feed Cards) -->
+        <main class="feed-main">
+            {% if not data.success %}
+            <div class="alert-error">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <div>
+                    <h4>Error Fetching Feed</h4>
+                    <p>{{ data.error }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="feed-header">
+                <h2>Recent Notes (<span id="visible-count">{{ data.entries | length }}</span>)</h2>
+                <button id="select-all-btn" class="btn btn-secondary btn-sm">
+                    <i class="fa-regular fa-square-check"></i> Select All
+                </button>
+            </div>
+
+            <div class="feed-container" id="feed-container">
+                {% for entry in data.entries %}
+                <div class="feed-card {{ entry.type }}" data-type="{{ entry.type }}" data-id="{{ entry.id }}">
+                    <div class="card-selection">
+                        <input type="checkbox" class="entry-checkbox" id="check-{{ entry.id }}">
+                        <label for="check-{{ entry.id }}"></label>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="card-meta">
+                            <span class="badge badge-{{ entry.type }}">{{ entry.type | capitalize }}</span>
+                            <span class="card-date"><i class="fa-regular fa-calendar"></i> {{ entry.date }}</span>
+                        </div>
+                        
+                        <h3 class="card-title">{{ entry.title }}</h3>
+                        
+                        <div class="card-content">
+                            {{ entry.content | safe }}
+                        </div>
+                        
+                        <div class="card-actions">
+                            {% if entry.link %}
+                            <a href="{{ entry.link }}" target="_blank" class="card-link">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i> View Docs
+                            </a>
+                            {% endif %}
+                            <button class="btn btn-tweet-single" onclick="tweetSingle('{{ entry.title | replace("'", "\\'") }}', '{{ entry.link }}', '{{ entry.tweet_preview | replace("'", "\\'") }}')">
+                                <i class="fa-brands fa-x-twitter"></i> Tweet This
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Floating Action Bar for Selected Tweets -->
+    <div class="floating-bar" id="floating-bar">
+        <div class="floating-content">
+            <span class="selected-text"><strong id="selected-count">0</strong> updates selected</span>
+            <div class="floating-actions">
+                <button id="clear-selection-btn" class="btn btn-secondary">Clear</button>
+                <button id="tweet-selected-btn" class="btn btn-tweet">
+                    <i class="fa-brands fa-x-twitter"></i> Tweet Selected
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tweet Composer Modal -->
+    <div class="modal-overlay" id="tweet-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-brands fa-x-twitter"></i> Compose Tweet</h3>
+                <button class="close-modal-btn" id="close-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Review and customize your tweet content before sharing:</p>
+                <textarea id="tweet-textarea" rows="6" maxlength="280"></textarea>
+                <div class="char-counter"><span id="char-count">0</span> / 280</div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-tweet-btn" class="btn btn-secondary">Cancel</button>
+                <button id="send-tweet-btn" class="btn btn-tweet">
+                    <i class="fa-brands fa-x-twitter"></i> Post to X
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
