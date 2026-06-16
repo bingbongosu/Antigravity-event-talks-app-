@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedCountSpan = document.getElementById('selected-count');
     const clearSelectionBtn = document.getElementById('clear-selection-btn');
     const tweetSelectedBtn = document.getElementById('tweet-selected-btn');
+    const themeToggle = document.getElementById('theme-toggle');
     
     // Modal Elements
     const tweetModal = document.getElementById('tweet-modal');
@@ -34,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     exportCsvBtn.addEventListener('click', exportToCSV);
     clearSelectionBtn.addEventListener('click', clearSelection);
     tweetSelectedBtn.addEventListener('click', openMultiTweetComposer);
+    themeToggle.addEventListener('change', switchTheme);
     
     // Modal listeners
     closeModalBtn.addEventListener('click', hideModal);
@@ -43,6 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial binding for checkboxes
     bindCardEvents();
+    initTheme();
 
     function bindCardEvents() {
         const checkboxes = document.querySelectorAll('.entry-checkbox');
@@ -383,5 +386,24 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+
+    // Theme Switch
+    function initTheme() {
+        const currentTheme = localStorage.getItem('theme');
+        if (currentTheme === 'light-theme') {
+            document.body.classList.add('light-theme');
+            themeToggle.checked = true;
+        }
+    }
+
+    function switchTheme(e) {
+        if (e.target.checked) {
+            document.body.classList.add('light-theme');
+            localStorage.setItem('theme', 'light-theme');
+        } else {
+            document.body.classList.remove('light-theme');
+            localStorage.setItem('theme', 'dark-theme');
+        }
     }
 });
